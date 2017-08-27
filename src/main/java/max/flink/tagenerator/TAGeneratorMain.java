@@ -4,7 +4,6 @@ import java.util.Properties;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -37,8 +36,7 @@ public class TAGeneratorMain
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
        
         try {
-        	//TypeInformationKeyValueSerializationSchema<String, String> schema = new TypeInformationKeyValueSerializationSchema<String, String>(String.class, String.class, env.getConfig());
-        	
+      	
         	FlinkKafkaConsumer010<String> kafkaSrc = new FlinkKafkaConsumer010<String>("test", new SimpleStringSchema(), properties);
         	kafkaSrc.assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
         	    @Override
@@ -55,13 +53,9 @@ public class TAGeneratorMain
 	        		return Double.valueOf(StringUtils.split(s,"_")[1]);
 	        	}
 	        })
+	        	//With the window setting, calculate Moving Average of 5 stock prices for each 5 secs
 	        	.windowAll(SlidingEventTimeWindows.of(Time.seconds(21), Time.seconds(5)))
-	        	//.trigger(CountTrigger.of(5))
-	        	.reduce(new ReduceFunction<Double>() {
-	        		public Double reduce(Double v1, Double v2) throws Exception{
-	        	        return v1+v2;
-	        	    }
-	        	})
+	        	.sum(0)
 	        	.map(new MapFunction<Double, Double>() {
 	            	public Double map (Double d) throws Exception{
 	            		return d/5;
